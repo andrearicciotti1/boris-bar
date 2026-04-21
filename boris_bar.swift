@@ -71,6 +71,33 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             .sorted { $0.lastPathComponent.lowercased() < $1.lastPathComponent.lowercased() }
     }
 
+    // MARK: - Slot overrides (UserDefaults)
+
+    private let overridesKey = "slotOverrides"
+
+    func customURL(forSlot idx: Int) -> URL? {
+        guard let dict = UserDefaults.standard.dictionary(forKey: overridesKey) as? [String: String],
+              let path = dict[String(idx)] else { return nil }
+        let url = URL(fileURLWithPath: path)
+        return FileManager.default.fileExists(atPath: path) ? url : nil
+    }
+
+    private func setSlotOverride(_ idx: Int, path: String) {
+        var dict = UserDefaults.standard.dictionary(forKey: overridesKey) as? [String: String] ?? [:]
+        dict[String(idx)] = path
+        UserDefaults.standard.set(dict, forKey: overridesKey)
+    }
+
+    private func clearSlotOverride(_ idx: Int) {
+        var dict = UserDefaults.standard.dictionary(forKey: overridesKey) as? [String: String] ?? [:]
+        dict.removeValue(forKey: String(idx))
+        UserDefaults.standard.set(dict, forKey: overridesKey)
+    }
+
+    private func clearAllSlotOverrides() {
+        UserDefaults.standard.removeObject(forKey: overridesKey)
+    }
+
     // MARK: - Lifecycle
 
     func applicationDidFinishLaunching(_ n: Notification) {
@@ -89,14 +116,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let menu = NSMenu()
         menu.delegate = self
 
-        for c in builtIn {
-            let item = NSMenuItem(title: c.label,
-                                  action: #selector(playBuiltIn(_:)),
+        for (i, c) in builtIn.enumerated() {
+            let customLabel = customURL(forSlot: i)?.deletingPathExtension().lastPathComponent
+            let label = customLabel ?? c.label
+            let item = NSMenuItem(title: label,
+                                  action: #selector(playSlotItem(_:)),
                                   keyEquivalent: "")
-            item.representedObject = c.base
+            item.representedObject = i
             item.target = self
-            let attr = NSMutableAttributedString(string: c.label)
-            attr.append(NSAttributedString(string: "\t\(c.display)",
+            let displaySuffix = customLabel != nil ? "\t\(c.display) ●" : "\t\(c.display)"
+            let attr = NSMutableAttributedString(string: label)
+            attr.append(NSAttributedString(string: displaySuffix,
                 attributes: [.foregroundColor: NSColor.secondaryLabelColor]))
             item.attributedTitle = attr
             menu.addItem(item)
@@ -132,6 +162,32 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         open.target = self
         menu.addItem(open)
 
+        // Settings submenu
+        menu.addItem(.separator())
+        let settingsItem = NSMenuItem(title: "Impostazioni", action: nil, keyEquivalent: "")
+        let settingsMenu = NSMenu(title: "Impostazioni")
+        for (i, c) in builtIn.enumerated() {
+            let custom = customURL(forSlot: i)
+            let soundName = custom?.deletingPathExtension().lastPathComponent ?? c.label
+            let indicator = custom != nil ? " ●" : ""
+            let slotItem = NSMenuItem(
+                title: "\(c.display)  \(soundName)\(indicator)",
+                action: #selector(changeSlotSound(_:)),
+                keyEquivalent: ""
+            )
+            slotItem.representedObject = i
+            slotItem.target = self
+            settingsMenu.addItem(slotItem)
+        }
+        settingsMenu.addItem(.separator())
+        let resetAll = NSMenuItem(title: "Ripristina predefiniti",
+                                  action: #selector(resetAllSlots),
+                                  keyEquivalent: "")
+        resetAll.target = self
+        settingsMenu.addItem(resetAll)
+        settingsItem.submenu = settingsMenu
+        menu.addItem(settingsItem)
+
         menu.addItem(.separator())
         loginItem = NSMenuItem(title: "Avvia al login",
                                action: #selector(toggleLogin),
@@ -151,9 +207,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // MARK: - Playback
 
-    @objc func playBuiltIn(_ sender: NSMenuItem) {
-        guard let base = sender.representedObject as? String else { return }
-        playBuiltIn(base: base)
+    @objc func playSlotItem(_ sender: NSMenuItem) {
+        guard let idx = sender.representedObject as? Int else { return }
+        playSlot(idx)
+    }
+
+    func playSlot(_ idx: Int) {
+        if let url = customURL(forSlot: idx) {
+            play(url: url)
+        } else {
+            playBuiltIn(base: builtIn[idx].base)
+        }
     }
 
     func playBuiltIn(base: String) {
@@ -193,6 +257,28 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         player?.stop()
         player = nil
         currentURL = nil
+    }
+
+    // MARK: - Slot settings
+
+    @objc func changeSlotSound(_ sender: NSMenuItem) {
+        guard let idx = sender.representedObject as? Int else { return }
+        NSApp.activate(ignoringOtherApps: true)
+        let panel = NSOpenPanel()
+        panel.title = "Scegli suono per \(builtIn[idx].display)"
+        panel.message = "Suono assegnato a \(builtIn[idx].display) (\(builtIn[idx].label))"
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.allowedContentTypes = [.audio, .mp3, .mpeg4Audio, .wav, .aiff]
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        setSlotOverride(idx, path: url.path)
+        rebuildMenu()
+    }
+
+    @objc func resetAllSlots() {
+        clearAllSlotOverrides()
+        rebuildMenu()
     }
 
     // MARK: - Custom sound management
@@ -251,7 +337,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 let d = Unmanaged<AppDelegate>.fromOpaque(userData).takeUnretainedValue()
                 let idx = Int(hkID.id)
                 if idx >= 0 && idx < d.builtIn.count {
-                    d.playBuiltIn(base: d.builtIn[idx].base)
+                    d.playSlot(idx)
                 }
             }
             return noErr
