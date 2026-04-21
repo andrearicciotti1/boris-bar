@@ -52,8 +52,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     let maxDuration: TimeInterval = 30
 
     let builtIn: [BuiltInClip] = [
-        BuiltInClip(label: "F4",
-                    base: "F4",
+        BuiltInClip(label: "Fai uno sforzo",
+                    base: "fai uno sforzo",
                     key: UInt32(kVK_ANSI_1), mods: UInt32(cmdKey | optionKey), display: "⌥⌘1"),
         BuiltInClip(label: "Tutti basiti",
                     base: "Tutti basiti",
@@ -61,8 +61,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         BuiltInClip(label: "A cazzo di cane",
                     base: "a cazzo di cane",
                     key: UInt32(kVK_ANSI_3), mods: UInt32(cmdKey | optionKey), display: "⌥⌘3"),
-        BuiltInClip(label: "Fai uno sforzo",
-                    base: "fai uno sforzo",
+        BuiltInClip(label: "F4",
+                    base: "F4",
                     key: UInt32(kVK_ANSI_4), mods: UInt32(cmdKey | optionKey), display: "⌥⌘4"),
         BuiltInClip(label: "Fiano Romano",
                     base: "Fiano Romano",

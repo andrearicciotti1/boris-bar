@@ -71,10 +71,10 @@ Nome file = label nel menu.
 
 | Shortcut | Clip |
 |----------|------|
-| `⌥⌘1`    | F4 |
+| `⌥⌘1`    | Fai uno sforzo |
 | `⌥⌘2`    | Tutti basiti |
 | `⌥⌘3`    | A cazzo di cane |
-| `⌥⌘4`    | Fai uno sforzo |
+| `⌥⌘4`    | F4 |
 | `⌥⌘5`    | Fiano Romano |
 | `⌥⌘6`    | Però sei molto italiano |
 | `⌥⌘7`    | Thank you for being so not italian |
